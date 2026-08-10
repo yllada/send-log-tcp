@@ -1,3 +1,5 @@
+// Package main implements the Send-Log-TCP desktop application: a Wails-based
+// GUI for composing and sending syslog messages over TCP, UDP and TLS.
 package main
 
 import (
@@ -44,13 +46,13 @@ func (a *App) startup(ctx context.Context) {
 }
 
 // domReady is called after front-end resources have been loaded
-func (a *App) domReady(ctx context.Context) {
+func (a *App) domReady(_ context.Context) {
 	// Center the window on the screen
 	runtime.WindowCenter(a.ctx)
 }
 
 // beforeClose is called when the application is about to quit
-func (a *App) beforeClose(ctx context.Context) (prevent bool) {
+func (a *App) beforeClose(_ context.Context) (prevent bool) {
 	// Check if connection service has active connection
 	if a.connectionService != nil && a.connectionService.IsConnected() {
 		result, err := runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
@@ -80,7 +82,7 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 }
 
 // shutdown is called at application termination
-func (a *App) shutdown(ctx context.Context) {
+func (a *App) shutdown(_ context.Context) {
 	// Ensure all connections are closed
 	if a.connectionService != nil {
 		a.connectionService.Disconnect()

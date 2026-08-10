@@ -145,7 +145,7 @@ func (s *SyslogService) SendSyslogMessages(config SyslogConfig) SyslogResponse {
 		response.Errors = append(response.Errors, fmt.Sprintf("Error connecting to %s: %v", fullAddress, err))
 		return response
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Send messages based on protocol
 	if config.Protocol == "tcp" {

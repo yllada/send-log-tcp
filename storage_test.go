@@ -2,8 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -13,85 +11,6 @@ import (
 // STORAGE TESTS - Profile and Template Persistence
 // Tests for JSON-based storage layer with file operations
 // =============================================================================
-
-// testStorageDir is used by tests to override the storage location
-var testStorageDir string
-
-// setupTestStorage creates a temporary storage directory for testing
-// and returns a cleanup function
-func setupTestStorage(t *testing.T) func() {
-	t.Helper()
-
-	// Save original and set up temp dir
-	tempDir := t.TempDir()
-	testStorageDir = tempDir
-
-	// Create the app subdirectory
-	appDir := filepath.Join(tempDir, appFolderName)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
-		t.Fatalf("failed to create test storage dir: %v", err)
-	}
-
-	return func() {
-		testStorageDir = ""
-	}
-}
-
-// getTestStoragePath returns the test storage path (overrides getStoragePath for tests)
-func getTestStoragePath() string {
-	if testStorageDir != "" {
-		return filepath.Join(testStorageDir, appFolderName, storageFileName)
-	}
-	return ""
-}
-
-// writeTestStorage writes storage data directly to the test storage file
-func writeTestStorage(t *testing.T, storage *StorageData) {
-	t.Helper()
-
-	path := getTestStoragePath()
-	if path == "" {
-		t.Fatal("test storage not set up")
-	}
-
-	data, err := json.MarshalIndent(storage, "", "  ")
-	if err != nil {
-		t.Fatalf("failed to marshal storage: %v", err)
-	}
-
-	if err := os.WriteFile(path, data, 0644); err != nil {
-		t.Fatalf("failed to write storage: %v", err)
-	}
-}
-
-// readTestStorage reads storage data directly from the test storage file
-func readTestStorage(t *testing.T) *StorageData {
-	t.Helper()
-
-	path := getTestStoragePath()
-	if path == "" {
-		t.Fatal("test storage not set up")
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &StorageData{
-				Version:   storageVersion,
-				Profiles:  []ConnectionProfile{},
-				Templates: []LogTemplate{},
-			}
-		}
-		t.Fatalf("failed to read storage: %v", err)
-	}
-
-	var storage StorageData
-	if err := json.Unmarshal(data, &storage); err != nil {
-		t.Fatalf("failed to parse storage: %v", err)
-	}
-
-	return &storage
-}
 
 // =============================================================================
 // STORAGE DATA SERIALIZATION TESTS

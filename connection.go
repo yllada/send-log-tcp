@@ -210,7 +210,7 @@ func dialTLS(address, port string, tlsVerify bool, caCertPath, clientCertPath, c
 	}
 
 	if err := tlsConn.Handshake(); err != nil {
-		tlsConn.Close()
+		_ = tlsConn.Close()
 		return nil, fmt.Errorf("TLS handshake failed: %w", err)
 	}
 

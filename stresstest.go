@@ -183,7 +183,7 @@ func (s *StressTestService) runContinuousSend(ctx context.Context, config Contin
 		runtime.EventsEmit(s.ctx, "continuous:error", err.Error())
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create framer for TCP
 	var framer *Framer
@@ -255,10 +255,14 @@ func (s *StressTestService) runContinuousSend(ctx context.Context, config Contin
 					errorCount++
 					continue
 				}
-				conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+				if err := conn.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+					runtime.LogWarning(s.ctx, fmt.Sprintf("Failed to set write deadline: %v", err))
+				}
 				sendErr = writeAll(conn, framedMsg)
 			} else {
-				conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+				if err := conn.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+					runtime.LogWarning(s.ctx, fmt.Sprintf("Failed to set write deadline: %v", err))
+				}
 				sendErr = writeAll(conn, []byte(syslogMsg))
 			}
 
