@@ -57,6 +57,7 @@ jobs:
       version_short: ${{ steps.version.outputs.version_short }}
       is_prerelease: ${{ steps.version.outputs.is_prerelease }}
       changelog: ${{ steps.changelog.outputs.changelog }}
+      compare_url: ${{ steps.changelog.outputs.compare_url }}
       
     steps:
       - name: Checkout code
@@ -97,6 +98,16 @@ jobs:
           else
             echo "Previous tag: $PREVIOUS_TAG"
             COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges ${PREVIOUS_TAG}..HEAD)
+          fi
+          
+          # El enlace de comparacion se construye aqui, que es donde se conoce
+          # PREVIOUS_TAG. Sin tag anterior no hay nada que comparar, asi que se
+          # enlaza la lista de commits en lugar de emitir una URL sin la
+          # referencia izquierda.
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "compare_url=https://github.com/${GITHUB_REPOSITORY}/commits/${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "compare_url=https://github.com/${GITHUB_REPOSITORY}/compare/${PREVIOUS_TAG}...${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
           fi
           
           # Categorizar commits por tipo (Conventional Commits)
@@ -290,13 +301,20 @@ jobs:
           # Checksum del binario
           sha256sum "${{ matrix.output }}" > "${{ matrix.output }}.sha256"
           
-          # Checksums de paquetes Linux
-          if [ -f "*.deb" ]; then
-            for f in *.deb; do sha256sum "$f" > "$f.sha256"; done
-          fi
-          if [ -f "*.AppImage" ]; then
-            for f in *.AppImage; do sha256sum "$f" > "$f.sha256"; done
-          fi
+          # Checksums de paquetes Linux.
+          #
+          # No usar [ -f "*.deb" ]: las comillas impiden el globbing, asi que esa
+          # condicion pregunta por un fichero llamado literalmente "*.deb" y
+          # nunca es cierta. El DEB y el AppImage se publicaron sin checksum
+          # desde que se escribio este workflow, mientras las notas del release
+          # pedian verificarlos con sha256sum.
+          #
+          # Al iterar el glob directamente, si no hay coincidencias el patron
+          # queda sin expandir y el guard -f lo descarta.
+          for f in *.deb *.AppImage; do
+            [ -f "$f" ] || continue
+            sha256sum "$f" > "$f.sha256"
+          done
           
       - name: Generate checksum (Windows)
         if: runner.os == 'Windows'
@@ -468,7 +486,7 @@ jobs:
             ```
             
             ---
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/...v${{ needs.prepare.outputs.version_short }}
+            **Full Changelog**: ${{ needs.prepare.outputs.compare_url }}
           files: |
             release/*
         env:
