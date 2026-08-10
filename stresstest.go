@@ -17,21 +17,24 @@ import (
 // ContinuousSendConfig configuration for continuous/stress test mode
 type ContinuousSendConfig struct {
 	// Connection settings
-	Address        string        `json:"Address"`
-	Port           string        `json:"Port"`
-	Protocol       string        `json:"Protocol"`
-	Message        string        `json:"Message"`
-	FramingMethod  FramingMethod `json:"FramingMethod"`
-	Facility       uint8         `json:"Facility"`
-	Severity       uint8         `json:"Severity"`
-	Hostname       string        `json:"Hostname"`
-	Appname        string        `json:"Appname"`
-	UseRFC5424     bool          `json:"UseRFC5424"`
-	UseTLS         bool          `json:"UseTLS"`
-	TLSVerify      bool          `json:"TLSVerify"`
-	CACertPath     string        `json:"CACertPath"`
-	ClientCertPath string        `json:"ClientCertPath"`
-	ClientKeyPath  string        `json:"ClientKeyPath"`
+	Address       string        `json:"Address"`
+	Port          string        `json:"Port"`
+	Protocol      string        `json:"Protocol"`
+	Message       string        `json:"Message"`
+	FramingMethod FramingMethod `json:"FramingMethod"`
+	Facility      uint8         `json:"Facility"`
+	Severity      uint8         `json:"Severity"`
+	Hostname      string        `json:"Hostname"`
+	Appname       string        `json:"Appname"`
+	MessageFormat MessageFormat `json:"MessageFormat"`
+	// UseRFC5424 is the legacy format switch, kept for stored configs.
+	// MessageFormat takes precedence when set.
+	UseRFC5424     bool   `json:"UseRFC5424"`
+	UseTLS         bool   `json:"UseTLS"`
+	TLSVerify      bool   `json:"TLSVerify"`
+	CACertPath     string `json:"CACertPath"`
+	ClientCertPath string `json:"ClientCertPath"`
+	ClientKeyPath  string `json:"ClientKeyPath"`
 
 	// Continuous send settings
 	Duration       int  `json:"Duration"`
@@ -153,6 +156,7 @@ func (s *StressTestService) runContinuousSend(ctx context.Context, config Contin
 		Severity:       config.Severity,
 		Hostname:       config.Hostname,
 		Appname:        config.Appname,
+		MessageFormat:  config.MessageFormat,
 		UseRFC5424:     config.UseRFC5424,
 		UseTLS:         config.UseTLS,
 		TLSVerify:      config.TLSVerify,

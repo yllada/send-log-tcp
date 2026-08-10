@@ -76,6 +76,7 @@ export namespace main {
 	    Severity: number;
 	    Hostname: string;
 	    Appname: string;
+	    MessageFormat: string;
 	    UseRFC5424: boolean;
 	    UseTLS: boolean;
 	    TLSVerify: boolean;
@@ -102,6 +103,7 @@ export namespace main {
 	        this.Severity = source["Severity"];
 	        this.Hostname = source["Hostname"];
 	        this.Appname = source["Appname"];
+	        this.MessageFormat = source["MessageFormat"];
 	        this.UseRFC5424 = source["UseRFC5424"];
 	        this.UseTLS = source["UseTLS"];
 	        this.TLSVerify = source["TLSVerify"];
@@ -148,6 +150,7 @@ export namespace main {
 	    facility: number;
 	    severity: number;
 	    appname: string;
+	    messageFormat?: string;
 	    useRfc5424: boolean;
 	    createdAt: number;
 	    updatedAt: number;
@@ -165,6 +168,7 @@ export namespace main {
 	        this.facility = source["facility"];
 	        this.severity = source["severity"];
 	        this.appname = source["appname"];
+	        this.messageFormat = source["messageFormat"];
 	        this.useRfc5424 = source["useRfc5424"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
@@ -192,6 +196,7 @@ export namespace main {
 	    Severity: number;
 	    Hostname: string;
 	    Appname: string;
+	    MessageFormat: string;
 	    UseRFC5424: boolean;
 	    UseTLS: boolean;
 	    TLSVerify: boolean;
@@ -214,6 +219,7 @@ export namespace main {
 	        this.Severity = source["Severity"];
 	        this.Hostname = source["Hostname"];
 	        this.Appname = source["Appname"];
+	        this.MessageFormat = source["MessageFormat"];
 	        this.UseRFC5424 = source["UseRFC5424"];
 	        this.UseTLS = source["UseTLS"];
 	        this.TLSVerify = source["TLSVerify"];

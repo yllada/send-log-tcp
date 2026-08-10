@@ -18,9 +18,12 @@ type LogTemplate struct {
 	Facility    uint8  `json:"facility"`
 	Severity    uint8  `json:"severity"`
 	Appname     string `json:"appname"`
-	UseRFC5424  bool   `json:"useRfc5424"`
-	CreatedAt   int64  `json:"createdAt"`
-	UpdatedAt   int64  `json:"updatedAt"`
+	// MessageFormat is optional so templates stored before it existed still
+	// decode; an empty value falls back to UseRFC5424.
+	MessageFormat string `json:"messageFormat,omitempty"`
+	UseRFC5424    bool   `json:"useRfc5424"`
+	CreatedAt     int64  `json:"createdAt"`
+	UpdatedAt     int64  `json:"updatedAt"`
 }
 
 // TemplateService handles log template operations

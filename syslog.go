@@ -27,23 +27,75 @@ const (
 	NonTransparent FramingMethod = "non-transparent"
 )
 
+// MessageFormat specifies how the syslog message is assembled before framing
+type MessageFormat string
+
+const (
+	// MessageFormatRFC5424 builds a full RFC 5424 header (version, timestamp,
+	// hostname, app-name, nil procid/msgid/structured-data) around the message
+	MessageFormatRFC5424 MessageFormat = "rfc5424"
+
+	// MessageFormatRFC3164 builds a legacy BSD syslog header (RFC 3164) around
+	// the message
+	MessageFormatRFC3164 MessageFormat = "rfc3164"
+
+	// MessageFormatRawPRI emits only "<PRI>" followed by the message bytes
+	// verbatim: no version digit, no space, no timestamp, no hostname, no
+	// app-name, no BOM and no trailing newline.
+	//
+	// This exists to replay real vendor logs. A captured line (for example an
+	// ESET ESMC event) already carries its own complete RFC 5424 header, so
+	// injecting another one would corrupt the event. The operator supplies
+	// everything after the PRI.
+	MessageFormatRawPRI MessageFormat = "raw-pri"
+)
+
+// IsValidMessageFormat reports whether the message format is recognized
+func IsValidMessageFormat(format MessageFormat) bool {
+	switch format {
+	case MessageFormatRFC5424, MessageFormatRFC3164, MessageFormatRawPRI:
+		return true
+	default:
+		return false
+	}
+}
+
+// resolveMessageFormat determines the effective message format.
+//
+// A recognized, non-empty format always wins. When the format is absent (or not
+// recognized) it falls back to the legacy UseRFC5424 boolean, which keeps
+// templates stored before MessageFormat existed working without any storage
+// migration.
+func resolveMessageFormat(format MessageFormat, useRFC5424 bool) MessageFormat {
+	if IsValidMessageFormat(format) {
+		return format
+	}
+	if useRFC5424 {
+		return MessageFormatRFC5424
+	}
+	return MessageFormatRFC3164
+}
+
 // SyslogConfig holds the configuration for sending syslog messages
 type SyslogConfig struct {
-	Address        string        `json:"Address"`
-	Port           string        `json:"Port"`
-	Protocol       string        `json:"Protocol"`
-	Messages       []string      `json:"Messages"`
-	FramingMethod  FramingMethod `json:"FramingMethod"`
-	Facility       uint8         `json:"Facility"`
-	Severity       uint8         `json:"Severity"`
-	Hostname       string        `json:"Hostname"`
-	Appname        string        `json:"Appname"`
-	UseRFC5424     bool          `json:"UseRFC5424"`
-	UseTLS         bool          `json:"UseTLS"`
-	TLSVerify      bool          `json:"TLSVerify"`
-	CACertPath     string        `json:"CACertPath"`
-	ClientCertPath string        `json:"ClientCertPath"`
-	ClientKeyPath  string        `json:"ClientKeyPath"`
+	Address       string        `json:"Address"`
+	Port          string        `json:"Port"`
+	Protocol      string        `json:"Protocol"`
+	Messages      []string      `json:"Messages"`
+	FramingMethod FramingMethod `json:"FramingMethod"`
+	Facility      uint8         `json:"Facility"`
+	Severity      uint8         `json:"Severity"`
+	Hostname      string        `json:"Hostname"`
+	Appname       string        `json:"Appname"`
+	MessageFormat MessageFormat `json:"MessageFormat"`
+	// UseRFC5424 is the legacy format switch. It is kept because stored
+	// templates and profiles persist it; MessageFormat takes precedence when set.
+	UseRFC5424     bool   `json:"UseRFC5424"`
+	UseTLS         bool   `json:"UseTLS"`
+	TLSVerify      bool   `json:"TLSVerify"`
+	CACertPath     string `json:"CACertPath"`
+	ClientCertPath string `json:"ClientCertPath"`
+	ClientKeyPath  string `json:"ClientKeyPath"`
 }
 
 // SyslogResponse contains the result of send operations
@@ -209,7 +261,8 @@ func (s *SyslogService) sendUDPMessages(conn net.Conn, config SyslogConfig) Sysl
 // SYSLOG MESSAGE FORMATTING HELPERS
 // ================================================================================
 
-// buildSyslogMessage constructs a valid syslog message per RFC 5424 or RFC 3164
+// buildSyslogMessage constructs a syslog message per RFC 5424, RFC 3164 or the
+// raw-pri passthrough mode
 func buildSyslogMessage(config SyslogConfig, message string) (string, error) {
 	priority := config.Facility*8 + config.Severity
 
@@ -217,10 +270,25 @@ func buildSyslogMessage(config SyslogConfig, message string) (string, error) {
 		return "", fmt.Errorf("invalid priority %d (facility=%d, severity=%d)", priority, config.Facility, config.Severity)
 	}
 
-	if config.UseRFC5424 {
+	switch resolveMessageFormat(config.MessageFormat, config.UseRFC5424) {
+	case MessageFormatRawPRI:
+		return buildRawPRIMessage(priority, message), nil
+	case MessageFormatRFC3164:
+		return buildRFC3164Message(priority, config, message), nil
+	default:
 		return buildRFC5424Message(priority, config, message), nil
 	}
-	return buildRFC3164Message(priority, config, message), nil
+}
+
+// buildRawPRIMessage prepends only the priority and emits the message bytes
+// verbatim.
+//
+// Exactly one rule applies: "<PRI>" followed by the message. No version digit,
+// no separating space, no timestamp, no hostname, no app-name, no BOM and no
+// trailing newline. Hostname and Appname from the config are deliberately
+// ignored because the replayed payload already supplies them.
+func buildRawPRIMessage(priority uint8, message string) string {
+	return fmt.Sprintf("<%d>%s", priority, message)
 }
 
 // buildRFC5424Message constructs message per RFC 5424
@@ -302,6 +370,12 @@ func validateConfig(config *SyslogConfig) error {
 
 	if config.FramingMethod != "" && !IsValidFramingMethod(config.FramingMethod) {
 		return fmt.Errorf("invalid framing method '%s'", config.FramingMethod)
+	}
+
+	// An empty MessageFormat is valid: legacy configs fall back to UseRFC5424.
+	if config.MessageFormat != "" && !IsValidMessageFormat(config.MessageFormat) {
+		return fmt.Errorf("invalid message format '%s' (expected '%s', '%s' or '%s')",
+			config.MessageFormat, MessageFormatRFC5424, MessageFormatRFC3164, MessageFormatRawPRI)
 	}
 
 	if config.Hostname == "" {
