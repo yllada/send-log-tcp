@@ -7,6 +7,7 @@
 #   - test: Run Go unit tests with coverage
 #   - lint: Run golangci-lint for code quality
 #   - frontend: Run frontend type checking
+#   - build-check: Build the real frontend and compile the Go binary
 # =============================================================================
 
 name: CI
@@ -44,6 +45,15 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+
+      # main.go embeds frontend/dist via go:embed, but frontend/dist is
+      # gitignored, so a fresh checkout has no embed target and the package
+      # fails to compile. The Go unit tests never exercise the embedded
+      # assets, so a placeholder file is enough to satisfy the embed
+      # directive and keeps this job fast. The build-check job compiles
+      # against the real frontend build.
+      - name: Create embed placeholder
+        run: mkdir -p frontend/dist && touch frontend/dist/index.html
 
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out ./...
@@ -85,10 +95,19 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
+      # Linting typechecks the package, so it needs the go:embed target for
+      # frontend/dist just like the test job does. See the test job for why a
+      # placeholder is sufficient here.
+      - name: Create embed placeholder
+        run: mkdir -p frontend/dist && touch frontend/dist/index.html
+
+      # Pinned to an explicit golangci-lint v2 release. "latest" resolves to
+      # the newest v1 release, which is built with Go 1.24 and refuses to run
+      # against the go 1.25.0 directive in go.mod.
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: v2.12.2
           args: --timeout=5m
 
   # ===========================================================================
@@ -121,12 +140,15 @@ jobs:
         run: pnpm exec tsc --noEmit
 
   # ===========================================================================
-  # Job: Build Verification (optional - only on PRs)
+  # Job: Build Verification
   # ===========================================================================
+  # This is the only job that compiles against the real embedded frontend, so
+  # it must also run on pushes to main. Restricting it to pull requests left
+  # main with no job that proved the app actually builds.
   build-check:
     name: Build Check
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
 
     steps:
       - name: Checkout code
@@ -137,6 +159,26 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      # next.config.js sets output: "export" with distDir: "dist", so this
+      # produces the real frontend/dist that main.go embeds via go:embed.
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm run build
 
       - name: Verify Go modules
         run: |
