@@ -1,5 +1,32 @@
 # SendLog Syslog Changelog
 
+## [1.7.0] - 2026-08-10
+
+### ✨ New Features
+- feat(ui): expose message format selector for raw-pri mode (989e430)
+- feat(syslog): add raw-pri message format for vendor log replay (dc227f8)
+- feat: add CONTRIBUTING.md and SECURITY.md for improved guidelines and security practices (4908713)
+
+### 🐛 Bug Fixes
+- fix(release): generate checksums for DEB and AppImage packages (078b2f2)
+- fix(lint): check ignored errors and drop dead test scaffolding (47e304b)
+
+### 📚 Documentation
+- docs: update CHANGELOG for v1.6.0 (efc7765)
+
+### 🔧 Maintenance
+- chore(deps): bump the dev-tools group across 1 directory with 2 updates (ca3734d)
+- chore(deps): bump react-hook-form from 7.71.2 to 7.72.0 in /frontend (2279371)
+- chore(deps): bump tailwindcss in /frontend in the ui group (6ea5bc5)
+- chore(deps): bump the nextjs group in /frontend with 2 updates (5c356ef)
+- chore(ci): bump pnpm/action-setup from 4 to 5 (2dcff5f)
+- chore(deps): bump @types/node from 25.4.0 to 25.5.0 in /frontend (0124b9c)
+
+### 📝 Other Changes
+- ci: unblock test, lint, frontend and build-check jobs (10c9457)
+
+
+
 ## [1.6.0] - 2026-03-10
 
 ### ✨ New Features
