@@ -8,6 +8,36 @@ import { z } from "zod";
 // IP validation regex (IPv4, IPv6, and localhost)
 export const ipRegex = /^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}|(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}|(?:[a-fA-F0-9]{1,4}:){1,7}:|(?:[a-fA-F0-9]{1,4}:){1,6}:[a-fA-F0-9]{1,4}|::(?:[a-fA-F0-9]{1,4}:){0,5}[a-fA-F0-9]{1,4}|[a-fA-F0-9]{1,4}::(?:[a-fA-F0-9]{1,4}:){0,4}[a-fA-F0-9]{1,4}|localhost)$/;
 
+// Supported syslog message formats.
+// "raw-pri" emits only "<PRI>" followed by the message bytes verbatim, so the
+// pasted line must already carry its own header.
+export const MESSAGE_FORMATS = ["rfc5424", "rfc3164", "raw-pri"] as const;
+
+export type MessageFormat = (typeof MESSAGE_FORMATS)[number];
+
+// Message format options for the format selector
+export const MESSAGE_FORMAT_OPTIONS: ReadonlyArray<{
+  value: MessageFormat;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "rfc5424",
+    label: "RFC 5424",
+    description: "Modern syslog header (version, timestamp, hostname, app-name)",
+  },
+  {
+    value: "rfc3164",
+    label: "RFC 3164",
+    description: "Legacy BSD syslog header",
+  },
+  {
+    value: "raw-pri",
+    label: "Raw + PRI",
+    description: "Only <PRI> plus your message, byte for byte. No header injected.",
+  },
+];
+
 // Form validation schema using Zod
 export const FormSchema = z.object({
   // Connection settings
@@ -35,6 +65,11 @@ export const FormSchema = z.object({
   Severity: z.number().min(0).max(7, "Severity must be between 0-7"),
   Hostname: z.string().optional(),
   Appname: z.string().min(1, "Application name is required"),
+  MessageFormat: z.enum(MESSAGE_FORMATS, {
+    message: "Please select a message format",
+  }),
+  // Legacy format switch, kept in sync with MessageFormat so saved templates
+  // and profiles stay coherent.
   UseRFC5424: z.boolean(),
 });
 
@@ -52,6 +87,7 @@ export const defaultFormValues: FormData = {
   Severity: 6, // info
   Hostname: "",
   Appname: "sendlog",
+  MessageFormat: "rfc5424",
   UseRFC5424: true,
   UseTLS: false,
   TLSVerify: false,
@@ -79,6 +115,7 @@ export interface MessageConfigValues {
   Facility: number;
   Severity: number;
   Appname: string;
+  MessageFormat: MessageFormat;
   UseRFC5424: boolean;
 }
 
@@ -93,6 +130,7 @@ export interface SyslogPayload {
   Severity: number;
   Hostname: string;
   Appname: string;
+  MessageFormat: MessageFormat;
   UseRFC5424: boolean;
   UseTLS: boolean;
   TLSVerify: boolean;

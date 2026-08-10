@@ -25,6 +25,11 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import {
+  MessageFormat,
+  MESSAGE_FORMATS,
+  MESSAGE_FORMAT_OPTIONS,
+} from "./form/types";
 
 import {
   StartContinuousSend,
@@ -65,6 +70,8 @@ const StressTestSchema = z.object({
   Severity: z.number().min(0).max(7),
   Hostname: z.string().optional(),
   Appname: z.string().min(1, "App name required"),
+  MessageFormat: z.enum(MESSAGE_FORMATS),
+  // Legacy format switch, kept in sync with MessageFormat.
   UseRFC5424: z.boolean(),
   UseTLS: z.boolean(),
   TLSVerify: z.boolean(),
@@ -106,6 +113,7 @@ export function StressTestForm() {
       Severity: 6,
       Hostname: "",
       Appname: "sendlog-stress",
+      MessageFormat: "rfc5424",
       UseRFC5424: true,
       UseTLS: false,
       TLSVerify: false,
@@ -118,6 +126,9 @@ export function StressTestForm() {
       RandomizeData: true,
     },
   });
+
+  // In raw-pri mode the app only prepends <PRI>; the message supplies the header.
+  const isRawPRI = form.watch("MessageFormat") === "raw-pri";
 
   // Event listeners
   useEffect(() => {
@@ -192,6 +203,7 @@ export function StressTestForm() {
         Severity: data.Severity,
         Hostname: data.Hostname || "",
         Appname: data.Appname,
+        MessageFormat: data.MessageFormat,
         UseRFC5424: data.UseRFC5424,
         UseTLS: data.UseTLS,
         TLSVerify: data.TLSVerify,
@@ -579,17 +591,60 @@ export function StressTestForm() {
               />
               <FormField
                 control={form.control}
+                name="MessageFormat"
+                render={({ field }) => (
+                  <FormItem className="space-y-1">
+                    <FormLabel className="text-xs font-medium">Format</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(v) => {
+                        const next = v as MessageFormat;
+                        field.onChange(next);
+                        // Keep the legacy flag coherent.
+                        form.setValue("UseRFC5424", next === "rfc5424");
+                      }}
+                      disabled={isRunning || !isConnected}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {MESSAGE_FORMAT_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="Appname"
                 render={({ field }) => (
-                  <FormItem className="col-span-2 space-y-1">
+                  <FormItem className="space-y-1">
                     <FormLabel className="text-xs font-medium">App Name</FormLabel>
                     <FormControl>
-                      <Input className="h-9" disabled={isRunning || !isConnected} {...field} />
+                      <Input
+                        className="h-9"
+                        disabled={isRunning || !isConnected || isRawPRI}
+                        {...field}
+                      />
                     </FormControl>
                   </FormItem>
                 )}
               />
             </div>
+
+            {isRawPRI && (
+              <p className="text-[10px] text-muted-foreground">
+                Raw + PRI sends only <code>&lt;PRI&gt;</code> plus your message. The
+                app-name is supplied by the message itself.
+              </p>
+            )}
           </CardContent>
         </Card>
 

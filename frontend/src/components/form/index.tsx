@@ -42,6 +42,7 @@ export function InputForm() {
       Severity: data.Severity,
       Hostname: data.Hostname || "",
       Appname: data.Appname,
+      MessageFormat: data.MessageFormat,
       UseRFC5424: data.UseRFC5424,
       UseTLS: data.UseTLS,
       TLSVerify: data.TLSVerify,

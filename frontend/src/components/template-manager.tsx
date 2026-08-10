@@ -44,6 +44,9 @@ interface LogTemplate {
   facility: number;
   severity: number;
   appname: string;
+  // Optional: templates saved before the message format selector existed only
+  // carry useRfc5424.
+  messageFormat?: string;
   useRfc5424: boolean;
   createdAt: number;
   updatedAt: number;
@@ -56,6 +59,7 @@ interface TemplateManagerProps {
     Facility: number;
     Severity: number;
     Appname: string;
+    MessageFormat: string;
     UseRFC5424: boolean;
   };
   // Callback to load template into form
@@ -76,6 +80,22 @@ const severityLabels: Record<number, string> = {
   0: "Emergency", 1: "Alert", 2: "Critical", 3: "Error",
   4: "Warning", 5: "Notice", 6: "Info", 7: "Debug",
 };
+
+// Message format labels
+const messageFormatLabels: Record<string, string> = {
+  "rfc5424": "RFC 5424",
+  "rfc3164": "RFC 3164",
+  "raw-pri": "Raw + PRI",
+};
+
+// formatLabel resolves the display label for a stored template. Templates saved
+// before messageFormat existed fall back to the legacy useRfc5424 flag.
+function formatLabel(messageFormat: string | undefined, useRfc5424: boolean): string {
+  if (messageFormat && messageFormatLabels[messageFormat]) {
+    return messageFormatLabels[messageFormat];
+  }
+  return useRfc5424 ? "RFC 5424" : "RFC 3164";
+}
 
 export function TemplateManager({ currentValues, onLoadTemplate }: TemplateManagerProps) {
   const [templates, setTemplates] = useState<LogTemplate[]>([]);
@@ -118,6 +138,7 @@ export function TemplateManager({ currentValues, onLoadTemplate }: TemplateManag
         facility: currentValues.Facility,
         severity: currentValues.Severity,
         appname: currentValues.Appname,
+        messageFormat: currentValues.MessageFormat,
         useRfc5424: currentValues.UseRFC5424,
       };
 
@@ -247,7 +268,7 @@ export function TemplateManager({ currentValues, onLoadTemplate }: TemplateManag
                           <div><strong>App:</strong> {t.appname}</div>
                           <div><strong>Facility:</strong> {facilityLabels[t.facility]} ({t.facility})</div>
                           <div><strong>Severity:</strong> {severityLabels[t.severity]} ({t.severity})</div>
-                          <div><strong>Format:</strong> {t.useRfc5424 ? "RFC 5424" : "RFC 3164"}</div>
+                          <div><strong>Format:</strong> {formatLabel(t.messageFormat, t.useRfc5424)}</div>
                           {t.description && (
                             <div><strong>Description:</strong> {t.description}</div>
                           )}
@@ -341,7 +362,7 @@ export function TemplateManager({ currentValues, onLoadTemplate }: TemplateManag
               <div><strong>App:</strong> {currentValues.Appname || "(not set)"}</div>
               <div><strong>Facility:</strong> {facilityLabels[currentValues.Facility]} ({currentValues.Facility})</div>
               <div><strong>Severity:</strong> {severityLabels[currentValues.Severity]} ({currentValues.Severity})</div>
-              <div><strong>Format:</strong> {currentValues.UseRFC5424 ? "RFC 5424" : "RFC 3164"}</div>
+              <div><strong>Format:</strong> {formatLabel(currentValues.MessageFormat, currentValues.UseRFC5424)}</div>
               <div className="mt-2">
                 <strong>Message Preview:</strong>
                 <pre className="mt-1 p-2 bg-background rounded text-xs whitespace-pre-wrap break-all max-h-24 overflow-auto">
